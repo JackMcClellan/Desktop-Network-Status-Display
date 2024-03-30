@@ -1,6 +1,4 @@
 /*
- Web client
-
  This sketch connects to Uptime Kuma https://github.com/louislam/uptime-kuma
  using an Arduino Mega with ethernet and Pixel strip
  to show the current status of monitors from Uptime Kuma with visual Pixel Colors
