@@ -1,4 +1,6 @@
 /*
+ Web client
+
  This sketch connects to Uptime Kuma https://github.com/louislam/uptime-kuma
  using an Arduino Mega with ethernet and Pixel strip
  to show the current status of monitors from Uptime Kuma with visual Pixel Colors
@@ -9,7 +11,7 @@
 
  created 28 Mar 2024
  by Jack McClellan
- modified 30 Mar 2024
+ modified 31 Mar 2024
  by Jack McClellan
 
  */
@@ -18,24 +20,25 @@
 #include <Ethernet.h>
 #include "FastLED.h"
 
-// Enter a MAC address and IP address for your controller below.
-byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+// Define Ardunio Ethernet Data
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED }; // MAC address of the ethernet card
 IPAddress ip(192, 168, 1, 99);  // IP address of the Arduino
 
-//Define the monitors to check status of
-IPAddress serverIP(192, 168, 1, 12);  // IP address of Uptime Kuma
-
-String monitorNumbers[] = {"6", "7", "8", "12"};
-int monitorCount = sizeof(monitorNumbers) / sizeof(monitorNumbers[0]);
+// Define the monitors to check status of
+IPAddress serverIP(192, 168, 1, 12);  // IP address of Uptime Server
+String monitorNumbers[] = {"6", "7", "8", "12"}; // The monitor numbers found from Uptime Server
+int refreshRate = 30; // Approx. Time(sec) between refreshing Status from Uptime Server
 
 // Define LED Data
-#define DATA_PIN 3 // for LED strand
-#define NUM_LEDS 5
+#define DATA_PIN 3 // The pin of the LED strand
+#define NUM_LEDS 5 // Number of LEDs on the current strand
+float brightness = .25; // Percentage for brightness of all LEDs
+bool blinkOnDown = false; // If a status is down, blink the LEDs red. Default is false(no blink)
+
+// ******************************************************** // Other Global Variables
 CRGB leds[NUM_LEDS];
-
-
-// ******************************************************** //
 EthernetClient client;
+int monitorCount = sizeof(monitorNumbers) / sizeof(monitorNumbers[0]);
 
 void setup() {
   // start the Ethernet connection:
@@ -96,33 +99,64 @@ String get_status(String response){
 
 void init_led_test() //runs at board boot to make sure pixels are working
 {
-  LEDS.showColor(CRGB(255, 0, 0)); //turn all pixels on red
-   delay(1000);
-   LEDS.showColor(CRGB(0, 255, 0)); //turn all pixels on green
-   delay(1000);
-   LEDS.showColor(CRGB(0, 0, 255)); //turn all pixels on blue
-   delay(1000);
-   LEDS.showColor(CRGB(0, 0, 0)); //turn all pixels off
+  for (int i = 0; i < NUM_LEDS; i++) {
+  leds[i] = CRGB(200,200,200); //turn current pixel white
+  FastLED.show();
+  delay(500);
+  }
+  delay(1000);
+  for (int i = 0; i < 2; i++) {
+  LEDS.showColor(CRGB(0, 0, 0)); //turn all pixels off
+  delay(200);
+  LEDS.showColor(CRGB(255 * brightness, 255 * brightness, 255 * brightness)); //turn all pixels white
+  delay(200);
+  }
+  LEDS.showColor(CRGB(0, 0, 0)); //turn all pixels off
+  delay(500);
 }
 
-void show_status_led(String statusArray[], int statusArrayCount) {
-  for (int i = 0; i < statusArrayCount; i++) {
+void show_status_led(String statusArray[]) {
+  for (int i = 0; i < monitorCount; i++) {
     const char* currentStatus = statusArray[i].c_str();
     if (strcmp(currentStatus, "Up") == 0) {
-      leds[i] = CRGB(0, 255, 0); //turn current pixel green
+      leds[i] = CRGB(0, 255 * brightness, 0); //turn current pixel green
     } else if (strcmp(currentStatus, "Down") == 0) {
-      leds[i] = CRGB(255, 0, 0); //turn current pixel red
+      leds[i] = CRGB(255 * brightness, 0, 0); //turn current pixel red
     } else if (strcmp(currentStatus, "Maintenance") == 0) {
-      leds[i] = CRGB(0, 0, 255); //turn current pixel blue
+      leds[i] = CRGB(0, 0, 255 * brightness); //turn current pixel blue
     } else if (strcmp(currentStatus, "Failed") == 0) {
-      leds[i] = CRGB(255, 255, 0); //turn current pixel yellow
+      leds[i] = CRGB(255 * brightness, 255 * brightness, 0); //turn current pixel yellow
     } else {
-      leds[i] = CRGB(255, 255, 255); //turn current pixel white
+      leds[i] = CRGB(255 * brightness, 255 * brightness, 255 * brightness); //turn current pixel white
       Serial.println("Invalid status");
     }
   }
   FastLED.show();
 }
+
+void blink_status_led(String statusArray[]) {
+  // Find all LEDs that correspond to "Down" status and turn them red
+  for (int i = 0; i < monitorCount; i++) {
+    const char* currentStatus = statusArray[i].c_str();
+    if (strcmp(currentStatus, "Down") == 0) {
+      leds[i] = CRGB(255 * brightness, 0, 0); //turn current pixel red
+    } 
+  }
+  FastLED.show();
+  delay(500); // Wait 500ms
+  
+  // Turn off all LEDs that correspond to "Down" status
+  for (int i = 0; i < monitorCount; i++) {
+    const char* currentStatus = statusArray[i].c_str();
+    if (strcmp(currentStatus, "Down") == 0) {
+      leds[i] = CRGB(0, 0, 0); // Turn current pixel off
+    } 
+  }
+  FastLED.show();
+  delay(500); // Wait 500ms
+}
+
+
 
 void loop() {
   String statusArray[monitorCount];
@@ -148,9 +182,12 @@ void loop() {
     statusArray[i] = status;
   }
   // Update LED status colors
-  show_status_led(statusArray, sizeof(statusArray) / sizeof(statusArray[0]));
-  
-  // wait 15 seconds before sending the next request:
+  show_status_led(statusArray);
   Serial.println();
-  delay(15000);
+  
+  // Wait before sending next refresh requests
+  for (int t = 0; t < refreshRate; t++){
+    if (blinkOnDown) blink_status_led(statusArray);
+    else delay(1000); 
+  }
 }
