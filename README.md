@@ -13,7 +13,8 @@ Circuit:
 * Ensure that the Uptime Kuma instance is running on a static IP address, then record the IP address and port number that the instance is running on.
 *  Once the instance is running, add some monitors and set the refresh rate on the Uptime Kuma instance.
 *  For each monitor, record the monitor number that the Uptime Kuma instance is running on. The monitor number is found in the URL of the monitor's status page. For example, if the monitor's status page is `https://uptime-kuma.com/dashboard/4`, then the monitor number is `4`. 
-  ![alt text](Images/monitorNumberPreview.png)
+
+![monitorNumberPreview](Images/monitorNumberPreview.png)
 
 ## Setup for Arduino
 
