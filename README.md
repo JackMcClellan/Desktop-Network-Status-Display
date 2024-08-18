@@ -2,6 +2,8 @@
 
 This is a desktop network status display for an arduino. It uses a locally hosted [Uptime Kuma instance](https://github.com/louislam/uptime-kuma) to update the status of the led pixels.
 
+![desktopDisplay](Images/Desktop_Image.jpg)
+
 Circuit:
 * Ethernet Module attached to pins 10, 50, 51, 52
 * LED Pixel Strip attached to pins 3 (minimum 5 pixels)
